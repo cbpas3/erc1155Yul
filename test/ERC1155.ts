@@ -99,5 +99,16 @@ describe("ERC1155", () => {
         contractERC1155.mintBatch(accounts[0].address, [0, 2], [2, 1], [])
       ).to.be.ok;
     });
+
+    it("should mint the appropriate amount per id", async function () {
+      await contractERC1155.mintBatch(accounts[0].address, [0, 2], [2, 1], []);
+      expect(
+        await contractERC1155.balanceOf(accounts[0].address, 0)
+      ).to.be.equal(2);
+
+      expect(
+        await contractERC1155.balanceOf(accounts[0].address, 2)
+      ).to.be.equal(1);
+    });
   });
 });
