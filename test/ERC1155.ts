@@ -111,4 +111,12 @@ describe("ERC1155", () => {
       ).to.be.equal(1);
     });
   });
+
+  describe("uri", async function () {
+    it("should return URI", async function () {
+      expect(await contractERC1155.uri()).to.be.equal(
+        "https://token-cdn-domain/{id}.json"
+      );
+    });
+  });
 });
