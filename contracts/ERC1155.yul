@@ -22,7 +22,11 @@ object "Yul_Test" {
                 mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
                 emitTransferSingle(decodeAsAddress(0), 0, decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
                 if isContract(decodeAsAddress(0)){
-                    
+                    let dLocation2 := add(4,mul(0x20,3))
+                    let dLengthLocation := add(4,calldataload(dLocation2))
+                    let dLength := calldataload(dLengthLocation)
+                    let dLocationStart := add(dLengthLocation,32)
+                    require(doSafeTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2),dLocationStart, dLength))
                 }
                 returnTrue()
             }
