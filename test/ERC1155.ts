@@ -76,4 +76,28 @@ describe("ERC1155", () => {
     //     );
     // });
   });
+  describe("mintBatch", async function () {
+    it("should revert when to is a zero address", async function () {
+      await expect(
+        contractERC1155.mintBatch(
+          ethers.constants.AddressZero,
+          [0, 2],
+          [1, 1],
+          []
+        )
+      ).to.be.reverted;
+    });
+
+    it("should revert when ids !==  amounts", async function () {
+      await expect(
+        contractERC1155.mintBatch(accounts[0].address, [0, 2], [2], [])
+      ).to.be.reverted;
+    });
+
+    it("should work fine when ids ===  amounts", async function () {
+      await expect(
+        contractERC1155.mintBatch(accounts[0].address, [0, 2], [2, 1], [])
+      ).to.be.ok;
+    });
+  });
 });

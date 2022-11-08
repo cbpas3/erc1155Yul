@@ -39,7 +39,14 @@ object "Yul_Test" {
                 let res := doSafeTransferAcceptanceCheck(caller(),caller(),decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2),dLocation2, dLength)
                 require(res)
             }
-
+            case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
+                revertIfZeroAddress(decodeAsAddress(0))
+                let id_length_location := calldataload(0x24)
+                let amount_length_location := calldataload(0x44)
+                let id_length := calldataload(add(4, id_length_location))
+                let amount_length := calldataload(add(4, amount_length_location))
+                require(eq(id_length,amount_length))
+            }
 
 
             default {
@@ -219,23 +226,6 @@ object "Yul_Test" {
             }
             function require(condition) {
                 if iszero(condition) { revert(0, 0) }
-            }
-
-            function callDataFormatter(hash, arg1,arg2,arg3,arg4,arg5){
-                // load free memory pointer
-                // 
-            }
-
-            function callOtherContract(){
-                // input should be 
-                // 0x 
-                // function signature: f23a6e61
-                // argument 1: 32 bytes
-                // argument 2: 32 bytes
-                // argument 3: 32 bytes
-                // argument 4: 32 bytes
-
-
             }
         }
 
