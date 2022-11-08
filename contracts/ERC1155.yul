@@ -41,11 +41,19 @@ object "Yul_Test" {
             }
             case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
                 revertIfZeroAddress(decodeAsAddress(0))
-                let id_length_location := calldataload(0x24)
-                let amount_length_location := calldataload(0x44)
-                let id_length := calldataload(add(4, id_length_location))
-                let amount_length := calldataload(add(4, amount_length_location))
+                let id_length_offset := calldataload(0x24)
+                let amount_length_offset := calldataload(0x44)
+                let id_length_location := add(4, id_length_offset)
+                let amount_length_location := add(4, amount_length_offset)
+                let id_length := calldataload(id_length_location)
+                let amount_length := calldataload(amount_length_location)
+                let id_first_elem_location := add(id_length_location, 0x20)
+                let amount_first_elem_location := add(amount_length_location, 0x20)
                 require(eq(id_length,amount_length))
+                for { let i := 0} lt(i, id_length) { i := add(i, 1) } { 
+                    mint(decodeAsAddress(0),calldataload(add(mul(i,0x20), id_first_elem_location)),calldataload(add(mul(i,0x20), amount_first_elem_location)))
+                }
+                returnTrue()
             }
 
 
