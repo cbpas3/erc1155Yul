@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const ERC1155 = await ethers.getContractFactory("Yul_Caller");
+  const ERC1155 = await ethers.getContractFactory("ERC1155");
   const erc1155 = await ERC1155.deploy();
 
   await erc1155.deployed();

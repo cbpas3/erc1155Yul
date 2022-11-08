@@ -2,6 +2,12 @@ object "Yul_Test" {
     code{
         // Store the creator in slot zero.
         sstore(0, caller())
+
+        // Store the URI "https://token-cdn-domain/{id}.json"
+        sstore(0x20, 0x68747470733A2F2F746F6B656E2D63646E2D646F6D61696E2F7B69647D2E6A73)
+        sstore(0x40, 0x6F6E000000000000000000000000000000000000000000000000000000000000)
+        
+        
         // Deploy the contract
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
@@ -17,7 +23,6 @@ object "Yul_Test" {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
             case 0x731133e9 /* "mint(address,uint25,uint25,bytes)" */ {
-                mstore(0,0x7311)
                 revertIfZeroAddress(decodeAsAddress(0))
                 mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
                 emitTransferSingle(decodeAsAddress(0), 0, decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
@@ -54,6 +59,11 @@ object "Yul_Test" {
                     mint(decodeAsAddress(0),calldataload(add(mul(i,0x20), id_first_elem_location)),calldataload(add(mul(i,0x20), amount_first_elem_location)))
                 }
                 returnTrue()
+            }
+
+            case 0x0e89341c /* "uri(uint256)" */ {
+                loadUriToMemory()
+                return(0x00, 0x80)
             }
 
 
@@ -175,6 +185,14 @@ object "Yul_Test" {
                 sstore(slot, bal)
             } 
 
+            function loadUriToMemory(){
+                mstore(0x00, 0x0000000000000000000000000000000000000000000000000000000000000020)
+                mstore(0x20, 0x0000000000000000000000000000000000000000000000000000000000000022)
+                mstore(0x40,sload(uriPos()))
+                mstore(0x60, sload(add(0x20,uriPos())))
+                
+            }
+
         /* ---------- events ---------- */
             function emitTransferSingle(operator, from, to, id, amount) {
                 let signatureHash := 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62
@@ -182,6 +200,13 @@ object "Yul_Test" {
                 mstore(0x20, amount)
                 log4(0, 0x40, signatureHash, operator, from, to)
             }
+
+            // function emitTransferBatch(operator, from, to, id, amount) {
+            //     let signatureHash := 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62
+            //     mstore(0, id)
+            //     mstore(0x20, amount)
+            //     log4(0, 0x40, signatureHash, operator, from, to)
+            // }
 
 
 
