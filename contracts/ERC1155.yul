@@ -27,11 +27,8 @@ object "Yul_Test" {
                 mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
                 emitTransferSingle(decodeAsAddress(0), 0, decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
                 if isContract(decodeAsAddress(0)){
-                    let dLocation2 := add(4,mul(0x20,3))
-                    let dLengthLocation := add(4,calldataload(dLocation2))
-                    let dLength := calldataload(dLengthLocation)
-                    let dLocationStart := add(dLengthLocation,32)
-                    require(doSafeTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2),dLocationStart, dLength))
+                    let data_length_offset := calldataload(0x64)
+                    require(doSafeTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2),data_length_offset))
     
                 }
                 returnTrue()
@@ -228,9 +225,10 @@ object "Yul_Test" {
                 r := iszero(gt(a, b))
             }
 
-            function doSafeTransferAcceptanceCheck(operator,from,to,id,amount,dataLocation, dataLength) -> success {
+            function doSafeTransferAcceptanceCheck(operator,from,to,id,amount,data_offset) -> success {
                 success:= 0
                 if isContract(to) {
+                    let data_new_offset := add(0x20, data_offset)
                     // load the arguments
                     // function signature `onERC1155Received(address,address,uint256,uint256,bytes)`
                     mstore(fmp(),0xf23a6e6100000000000000000000000000000000000000000000000000000000) 
@@ -239,16 +237,10 @@ object "Yul_Test" {
                     // mstore(add(fmp(),68), to) 
                     mstore(add(fmp(),68), id)
                     mstore(add(fmp(),100), amount)
-                    mstore(add(fmp(),132), 160)
-                    if gt(dataLength, 0){
-                        mstore(add(fmp(),164),dataLength)
-                        calldatacopy(add(fmp(),196),dataLocation,dataLength)
-                        success:= call(gas(),to, 0, fmp(),  add(164,dataLength), fmp(), 4)
-                    }
-                    if lt(dataLength, 1){
-                        mstore(add(fmp(),164),dataLength)
-                        success:= call(gas(),to, 0, fmp(),  196, fmp(), 4)
-                    }
+                    mstore(add(fmp(),132), data_new_offset)
+                    calldatacopy(add(fmp(),164),0x84,sub(calldatasize(),0x84))  
+                    success:= call(gas(),to, 0, fmp(),  add(calldatasize(),0x20),  add(add(fmp(),calldatasize()),0x1c), 4)
+                    require(eq(mload(add(add(fmp(),calldatasize()),0x1c)),0xf23a6e6100000000000000000000000000000000000000000000000000000000))
                     
                 }
             }
