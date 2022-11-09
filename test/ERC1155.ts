@@ -110,6 +110,37 @@ describe("ERC1155", () => {
         await contractERC1155.balanceOf(accounts[0].address, 2)
       ).to.be.equal(1);
     });
+
+    it("should mint batch to contract address", async function () {
+      const ContractFactoryTestReceiver = await ethers.getContractFactory(
+        "TestReceiver"
+      );
+      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
+      await contractTestReceiver.deployed();
+      await expect(
+        await contractERC1155.mintBatch(
+          contractTestReceiver.address,
+          [1, 2],
+          [2, 2],
+          []
+        )
+      ).to.be.ok;
+    });
+    it("should revert", async function () {
+      const ContractFactoryTestReceiver = await ethers.getContractFactory(
+        "TestReceiver2"
+      );
+      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
+      await contractTestReceiver.deployed();
+      await expect(
+        contractERC1155.mintBatch(
+          contractTestReceiver.address,
+          [1, 2],
+          [2, 2],
+          []
+        )
+      ).to.be.reverted;
+    });
   });
 
   describe("uri", async function () {
