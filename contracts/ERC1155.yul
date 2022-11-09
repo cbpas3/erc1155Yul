@@ -36,14 +36,6 @@ object "Yul_Test" {
                 returnTrue()
             }
 
-            case 0x9550a975 /* "doSafeTransferAcceptanceCheckTest(address,uint25,uint25,bytes)" */{
-                mstore(0,0x9550)
-                let dLocation2 := add(4,mul(0x20,3))
-                let dLengthLocation := add(4,calldataload(dLocation2))
-                let dLength := calldataload(dLengthLocation)
-                let res := doSafeTransferAcceptanceCheck(caller(),caller(),decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2),dLocation2, dLength)
-                require(res)
-            }
             case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
                 revertIfZeroAddress(decodeAsAddress(0))
                 let id_length_offset := calldataload(0x24)
@@ -58,6 +50,7 @@ object "Yul_Test" {
                 for { let i := 0} lt(i, id_length) { i := add(i, 1) } { 
                     mint(decodeAsAddress(0),calldataload(add(mul(i,0x20), id_first_elem_location)),calldataload(add(mul(i,0x20), amount_first_elem_location)))
                 }
+                emitTransferBatch(caller(), 0x00, decodeAsAddress(0), id_length_offset,amount_length_offset,id_length_location,amount_length_location,id_length,amount_length)
                 returnTrue()
             }
 
@@ -193,7 +186,7 @@ object "Yul_Test" {
                 
             }
 
-        /* ---------- events ---------- */
+        /* ---------- Events ---------- */
             function emitTransferSingle(operator, from, to, id, amount) {
                 let signatureHash := 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62
                 mstore(0, id)
@@ -201,12 +194,31 @@ object "Yul_Test" {
                 log4(0, 0x40, signatureHash, operator, from, to)
             }
 
-            // function emitTransferBatch(operator, from, to, id, amount) {
-            //     let signatureHash := 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62
-            //     mstore(0, id)
-            //     mstore(0x20, amount)
-            //     log4(0, 0x40, signatureHash, operator, from, to)
-            // }
+                // let id_length_offset := calldataload(0x24)
+                // let amount_length_offset := calldataload(0x44)
+                // let id_length_location := add(4, id_length_offset)
+                // let amount_length_location := add(4, amount_length_offset)
+                // let id_length := calldataload(id_length_location)
+                // let amount_length := calldataload(amount_length_location)
+                // let id_first_elem_location := add(id_length_location, 0x20)
+                // let amount_first_elem_location := add(amount_length_location, 0x20)
+
+
+            function emitTransferBatch(operator, from, to, id_length_offset,amount_length_offset,id_length_location,amount_length_location,id_length,amount_length) {
+                let signatureHash := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
+                let offsetFor2ndArray := add(mul(0x20,id_length),0x60) // offset value for the data part of the second array (elements of first array + the 2 offsets + first length)
+                mstore(fmp(), 0x0000000000000000000000000000000000000000000000000000000000000040)
+                mstore(
+                    add(fmp(),0x20),  // memory location 
+                     offsetFor2ndArray 
+                ) 
+                calldatacopy(add(fmp(),0x40),id_length_location,add(0x20,mul(0x20,id_length))) // size is the length + 0x20 to include length
+                calldatacopy(add(fmp(),offsetFor2ndArray), amount_length_location, add(0x20,mul(0x20,id_length)))
+                let totalElements := add(amount_length, id_length)
+                let totalElementsSize := mul(0x40,totalElements)
+                // let totalSize:= add(0x40,totalElementsSize)
+                log4(fmp(),totalElementsSize, signatureHash, operator, from, to)
+            }
 
 
 
