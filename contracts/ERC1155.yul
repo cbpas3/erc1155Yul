@@ -32,25 +32,35 @@ object "Yul_Test" {
                     let dLength := calldataload(dLengthLocation)
                     let dLocationStart := add(dLengthLocation,32)
                     require(doSafeTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2),dLocationStart, dLength))
+    
                 }
                 returnTrue()
             }
 
             case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
-                revertIfZeroAddress(decodeAsAddress(0))
+                
+                // ids
                 let id_length_offset := calldataload(0x24)
-                let amount_length_offset := calldataload(0x44)
                 let id_length_location := add(4, id_length_offset)
-                let amount_length_location := add(4, amount_length_offset)
                 let id_length := calldataload(id_length_location)
-                let amount_length := calldataload(amount_length_location)
                 let id_first_elem_location := add(id_length_location, 0x20)
+
+                // amounts
+                let amount_length_offset := calldataload(0x44)   
+                let amount_length_location := add(4, amount_length_offset)
+                let amount_length := calldataload(amount_length_location)
                 let amount_first_elem_location := add(amount_length_location, 0x20)
+                revertIfZeroAddress(decodeAsAddress(0))
                 require(eq(id_length,amount_length))
+
+                // bytes
+                let data_length_offset := calldataload(0x64)
+
                 for { let i := 0} lt(i, id_length) { i := add(i, 1) } { 
                     mint(decodeAsAddress(0),calldataload(add(mul(i,0x20), id_first_elem_location)),calldataload(add(mul(i,0x20), amount_first_elem_location)))
                 }
                 emitTransferBatch(caller(), 0x00, decodeAsAddress(0), id_length_offset,amount_length_offset,id_length_location,amount_length_location,id_length,amount_length)
+                require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),id_length_offset,amount_length_offset,data_length_offset))
                 returnTrue()
             }
 
@@ -194,15 +204,6 @@ object "Yul_Test" {
                 log4(0, 0x40, signatureHash, operator, from, to)
             }
 
-                // let id_length_offset := calldataload(0x24)
-                // let amount_length_offset := calldataload(0x44)
-                // let id_length_location := add(4, id_length_offset)
-                // let amount_length_location := add(4, amount_length_offset)
-                // let id_length := calldataload(id_length_location)
-                // let amount_length := calldataload(amount_length_location)
-                // let id_first_elem_location := add(id_length_location, 0x20)
-                // let amount_first_elem_location := add(amount_length_location, 0x20)
-
 
             function emitTransferBatch(operator, from, to, id_length_offset,amount_length_offset,id_length_location,amount_length_location,id_length,amount_length) {
                 let signatureHash := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
@@ -249,6 +250,25 @@ object "Yul_Test" {
                         success:= call(gas(),to, 0, fmp(),  196, fmp(), 4)
                     }
                     
+                }
+            }
+
+            function doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset) -> success {
+                success:= 0
+                let ids_new_offset := add(0x20,ids_offset)
+                let amounts_new_offset := add(0x20,amounts_offset)
+                let data_new_offset := add(0x20, data_offset)
+                if isContract(to) {
+                    // function signature `onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)`
+                    mstore(fmp(),0xbc197c8100000000000000000000000000000000000000000000000000000000) 
+                    mstore(add(fmp(),4), operator) // caller()
+                    mstore(add(fmp(),36), from) // caller()
+                    mstore(add(fmp(),68), ids_new_offset) 
+                    mstore(add(fmp(),100), amounts_new_offset)
+                    mstore(add(fmp(),132), data_new_offset)
+                    calldatacopy(add(fmp(),164),0x84,sub(calldatasize(),0x84))   
+                    success:= call(gas(),to, 0, fmp(),  add(calldatasize(),0x20), add(add(fmp(),calldatasize()),0x1c), 4)  
+                    require(eq(mload(add(add(fmp(),calldatasize()),0x1c)),0xbc197c8100000000000000000000000000000000000000000000000000000000))
                 }
             }
 
