@@ -6,6 +6,7 @@ describe("ERC1155", () => {
   let contractERC1155: any = null;
   let accounts: any = null;
   let provider = null;
+  let yulContract: any = null;
 
   beforeEach(async function () {
     const ContractFactoryERC1155 = await ethers.getContractFactory(
@@ -14,6 +15,8 @@ describe("ERC1155", () => {
     contractERC1155 = await ContractFactoryERC1155.deploy();
 
     await contractERC1155.deployed();
+    const yulContractAddress = await contractERC1155.getYulContractAddress();
+    yulContract = ethers.getContractAt("IERC1155", yulContractAddress);
 
     accounts = await ethers.getSigners();
     provider = await ethers.provider;

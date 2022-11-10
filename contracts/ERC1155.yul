@@ -22,16 +22,14 @@ object "Yul_Test" {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
 
+            case 0xf242432a /* "safeTransferFrom(address,address,uint256,uint256,bytes)" */ {
+                transfer(decodeAsAddress(0),decodeAsAddress(1),decodeAsUint(2),decodeAsUint(3)) // from, to, id, amount, bytes
+                returnTrue()
+            }
+
 
             case 0x731133e9 /* "mint(address,uint25,uint25,bytes)" */ {
-                revertIfZeroAddress(decodeAsAddress(0))
-                mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
-                emitTransferSingle(decodeAsAddress(0), 0, decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
-                if isContract(decodeAsAddress(0)){
-                    let data_length_offset := calldataload(0x64)
-                    require(doSafeTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2),data_length_offset))
-    
-                }
+                mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2)) //account,token_id,amount
                 returnTrue()
             }
 
@@ -180,9 +178,43 @@ object "Yul_Test" {
             }
 
             function mint(account,token_id,amount) {
+                transfer(0x00,account,token_id,amount)
+            }
+
+            function transfer(from,to,token_id,amount) {
+                revertIfZeroAddress(to)
+                addTo(to,token_id,amount)
+                
+                // Only happens during transfers
+                if gt(from,0){
+                    // TO DO: add or condition once is ApprovedForAll is implemented
+                    // require(eq(caller(),from))
+                    let slot:= accountToStorageOffset(from, token_id)
+                    let bal := sload(slot)
+                    require(gte(bal, amount))
+                    subtractTo(from,token_id,amount)
+                }
+    
+                emitTransferSingle(caller(), from, to, token_id, amount)
+                if isContract(to){
+                    let data_length_offset := calldataload(0x64)
+                    require(doSafeTransferAcceptanceCheck(caller(),0x00,to,token_id,amount,data_length_offset))
+    
+                }
+                
+            }  
+
+            function addTo(account,token_id,amount) {
                 let slot:= accountToStorageOffset(account, token_id)
                 let bal := sload(slot)
-                bal := add(bal, amount)
+                bal := safeAdd(bal, amount)
+                sstore(slot, bal)
+            }
+
+            function subtractTo(account,token_id,amount) {
+                let slot:= accountToStorageOffset(account, token_id)
+                let bal := sload(slot)
+                bal := sub(bal, amount)
                 sstore(slot, bal)
             } 
 
