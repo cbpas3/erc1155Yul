@@ -19,9 +19,10 @@ object "Yul_Test" {
             mstore(fmpPos(), 0xc0)
             switch selector()
             case 0x00fdd58e /* "balanceOf(address,uint256)" */ {
-                mstore(0,0x00fd)
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
+
+
             case 0x731133e9 /* "mint(address,uint25,uint25,bytes)" */ {
                 revertIfZeroAddress(decodeAsAddress(0))
                 mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2))
@@ -241,8 +242,12 @@ object "Yul_Test" {
                     calldatacopy(add(fmp(),164),0x84,sub(calldatasize(),0x84))  
                     success:= call(gas(),to, 0, fmp(),  add(calldatasize(),0x20),  add(add(fmp(),calldatasize()),0x1c), 4)
                     require(eq(mload(add(add(fmp(),calldatasize()),0x1c)),0xf23a6e6100000000000000000000000000000000000000000000000000000000))
-                    
                 }
+                if iszero(isContract(to)) {
+                    success:=1
+                }
+
+
             }
 
             function doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset) -> success {
@@ -262,6 +267,9 @@ object "Yul_Test" {
                     success:= call(gas(),to, 0, fmp(),  add(calldatasize(),0x20), add(add(fmp(),calldatasize()),0x1c), 4)  
                     require(eq(mload(add(add(fmp(),calldatasize()),0x1c)),0xbc197c8100000000000000000000000000000000000000000000000000000000))
                 }
+                if iszero(isContract(to)) {
+                    success:=1
+                }
             }
 
             function gte(a, b) -> r {
@@ -278,8 +286,8 @@ object "Yul_Test" {
                 require(addr)
             }
 
-            function isContract(addr) -> ic {
-                ic := not(eq(caller(),origin()))
+            function isContract(addr) -> ic {   
+                ic := gt(extcodesize(addr),0)
             }
             function require(condition) {
                 if iszero(condition) { revert(0, 0) }
