@@ -194,4 +194,23 @@ describe("ERC1155", () => {
       );
     });
   });
+
+  describe("transfer", async function () {
+    it("should transfer balance from address 1 to address 2", async function () {
+      contractERC1155.mint(accounts[0].address, 0, 3, []);
+      contractERC1155.safeTransferFrom(
+        accounts[0].address,
+        accounts[1].address,
+        0,
+        1,
+        []
+      );
+      expect(
+        await contractERC1155.balanceOf(accounts[0].address, 0)
+      ).to.be.equal(2);
+      expect(
+        await contractERC1155.balanceOf(accounts[1].address, 0)
+      ).to.be.equal(1);
+    });
+  });
 });
