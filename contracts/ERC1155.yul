@@ -188,7 +188,7 @@ object "Yul_Test" {
                 // Only happens during transfers
                 if gt(from,0){
                     // TO DO: add or condition once is ApprovedForAll is implemented
-                    // require(eq(caller(),from))
+                    require(eq(caller(),from))
                     let slot:= accountToStorageOffset(from, token_id)
                     let bal := sload(slot)
                     require(gte(bal, amount))
@@ -321,6 +321,7 @@ object "Yul_Test" {
             function isContract(addr) -> ic {   
                 ic := gt(extcodesize(addr),0)
             }
+
             function require(condition) {
                 if iszero(condition) { revert(0, 0) }
             }

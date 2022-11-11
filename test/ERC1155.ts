@@ -1,25 +1,66 @@
 const { ethers } = require("hardhat");
 const { expect } = require("chai");
+const fs = require("fs");
+const path = require("path");
 const { BigNumber } = ethers;
+
+const getAbi = () => {
+  try {
+    const dir = path.resolve(
+      __dirname,
+      "../artifacts/contracts/IERC1155.sol/IERC1155.json"
+    );
+    const file = fs.readFileSync(dir, "utf8");
+    const json = JSON.parse(file);
+    const abi = json.abi;
+    return abi;
+  } catch (e) {
+    console.log(`e: `, e);
+  }
+};
+
+const getBytecode = () => {
+  try {
+    const dir = path.resolve(
+      __dirname,
+      "../artifacts/contracts/ERC1155.yul/ERC1155.json"
+    );
+    const file = fs.readFileSync(dir, "utf8");
+    const json = JSON.parse(file);
+    const bytecode = json.bytecode;
+    return bytecode;
+  } catch (e) {
+    console.log(`e: `, e);
+  }
+};
 
 describe("ERC1155", () => {
   let contractERC1155: any = null;
   let accounts: any = null;
   let provider = null;
-  let yulContract: any = null;
 
   beforeEach(async function () {
     const ContractFactoryERC1155 = await ethers.getContractFactory(
       "Yul_Caller"
     );
-    contractERC1155 = await ContractFactoryERC1155.deploy();
 
+    const ERC1155 = await ethers.getContractFactory(
+      await getAbi(),
+      await getBytecode()
+    );
+    contractERC1155 = await ERC1155.deploy();
     await contractERC1155.deployed();
-    const yulContractAddress = await contractERC1155.getYulContractAddress();
-    yulContract = ethers.getContractAt("IERC1155", yulContractAddress);
+    // console.log("ERC1155 deployed to:", contractERC1155.address);
+
+    // contractERC1155 = await ContractFactoryERC1155.deploy();
+
+    // await contractERC1155.deployed();
+    // const yulContractAddress = await contractERC1155.getYulContractAddress();
+    // yulContract = ethers.getContractAt("IERC1155", yulContractAddress);
 
     accounts = await ethers.getSigners();
     provider = await ethers.provider;
+    // console.log(await contractERC1155.balanceOf(accounts[0].address, 0));
 
     let twentyThousandEtherInHex = ethers.utils.hexStripZeros(
       ethers.utils.parseEther("20000").toHexString()
@@ -148,7 +189,7 @@ describe("ERC1155", () => {
 
   describe("uri", async function () {
     it("should return URI", async function () {
-      expect(await contractERC1155.uri()).to.be.equal(
+      expect(await contractERC1155.uri(0)).to.be.equal(
         "https://token-cdn-domain/{id}.json"
       );
     });
