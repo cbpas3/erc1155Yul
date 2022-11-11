@@ -212,5 +212,18 @@ describe("ERC1155", () => {
         await contractERC1155.balanceOf(accounts[1].address, 0)
       ).to.be.equal(1);
     });
+
+    it("should revert because from address needs to match caller address", async function () {
+      contractERC1155.mint(accounts[1].address, 0, 3, []);
+      await expect(
+        contractERC1155.safeTransferFrom(
+          accounts[1].address,
+          accounts[0].address,
+          0,
+          1,
+          []
+        )
+      ).to.be.reverted;
+    });
   });
 });
