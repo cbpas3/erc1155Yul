@@ -210,7 +210,7 @@ object "Yul_Test" {
                 // Only happens during transfers
                 if gt(from,0){
                     // TO DO: add or condition once is ApprovedForAll is implemented
-                    // require(eq(caller(),from))
+                    require(eq(caller(),from))
                     let slot:= accountToStorageOffset(from, token_id)
                     let bal := sload(slot)
                     require(gte(bal, amount))
@@ -227,7 +227,7 @@ object "Yul_Test" {
             }  
 
             function batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize){
-                
+                 addToBatch(to, amountStartPosition, tokenIdStartPosition, tokenIdSize)
             }
 
             function addTo(account,token_id,amount) {
@@ -239,7 +239,8 @@ object "Yul_Test" {
 
             function addToBatch(account, amountOffset, token_idOffset, batchSize){
                 for { let i := 0x00} lte(i, batchSize) { i := add(i, 0x20) } {
-                    let token_id := calldataload(add(i, amountOffset))
+                    let token_id := calldataload(add(i, token_idOffset))
+                    let amount := calldataload(add(i, amountOffset))
                     let slot:= accountToStorageOffset(account, token_id)
                     let bal := sload(slot)
                     bal := safeAdd(bal, amount)

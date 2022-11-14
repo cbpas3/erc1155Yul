@@ -226,4 +226,18 @@ describe("ERC1155", () => {
       ).to.be.reverted;
     });
   });
+
+  describe("safeBatchTransfer", async function () {
+    it("should revert when the ids length is not equal the amounts length", async function () {
+      await expect(
+        contractERC1155.safeBatchTransferFrom(
+          accounts[0].address,
+          accounts[1].address,
+          [1, 2],
+          [1],
+          []
+        )
+      ).to.be.reverted;
+    });
+  });
 });
