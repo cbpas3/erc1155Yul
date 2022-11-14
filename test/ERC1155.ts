@@ -240,7 +240,8 @@ describe("ERC1155", () => {
       ).to.be.reverted;
     });
 
-    it("should add to several balances at once", async function () {
+    it("should add and subtract to several balances at once", async function () {
+      await contractERC1155.mintBatch(accounts[0].address, [1, 2], [2, 2], []);
       await contractERC1155.safeBatchTransferFrom(
         accounts[0].address,
         accounts[1].address,
@@ -255,6 +256,13 @@ describe("ERC1155", () => {
           [1, 2]
         )
       ).to.deep.equal([BigNumber.from(1), BigNumber.from(2)]);
+
+      expect(
+        await contractERC1155.balanceOfBatch(
+          [accounts[0].address, accounts[0].address],
+          [1, 2]
+        )
+      ).to.deep.equal([BigNumber.from(1), BigNumber.from(0)]);
     });
   });
 
