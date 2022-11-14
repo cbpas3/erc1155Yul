@@ -27,6 +27,12 @@ object "Yul_Test" {
                 returnTrue()
             }
 
+            case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */{
+                require(eq(getArrayLength(2),getArrayLength(3)))
+                batchTransfer(decodeAsAddress(0),decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),getArrayLength(2),getArrayLength(3))
+                returnTrue()
+            }
+
 
             case 0x731133e9 /* "mint(address,uint25,uint25,bytes)" */ {
                 mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2)) //account,token_id,amount
@@ -76,6 +82,21 @@ object "Yul_Test" {
                 s := div(calldataload(0), 0x100000000000000000000000000000000000000000000000000000000)
             }
 
+            function getArrayLength(offset) -> length {
+                let pos := add(4, mul(offset, 0x20))
+                let id_length_offset := calldataload(pos)
+                let id_length_location := add(4, id_length_offset)
+                length := calldataload(id_length_location)
+            }
+
+            function getFirstElementPosition(offset) -> e {
+                let pos := add(4, mul(offset, 0x20))
+                let id_length_offset := calldataload(pos)
+                let id_length_location := add(4, id_length_offset)
+                let id_length := calldataload(id_length_location)
+                e := add(id_length_location, 0x20)
+            }
+
             function decodeAsBytesStringToMemory(offset) {
                 // Adds the Bytes[]/String to memory
                 
@@ -108,6 +129,7 @@ object "Yul_Test" {
 
 
             }
+        
 
             function decodeAsAddress(offset) -> v {
                 v := decodeAsUint(offset)
@@ -188,7 +210,7 @@ object "Yul_Test" {
                 // Only happens during transfers
                 if gt(from,0){
                     // TO DO: add or condition once is ApprovedForAll is implemented
-                    require(eq(caller(),from))
+                    // require(eq(caller(),from))
                     let slot:= accountToStorageOffset(from, token_id)
                     let bal := sload(slot)
                     require(gte(bal, amount))
@@ -204,11 +226,25 @@ object "Yul_Test" {
                 
             }  
 
+            function batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize){
+                
+            }
+
             function addTo(account,token_id,amount) {
                 let slot:= accountToStorageOffset(account, token_id)
                 let bal := sload(slot)
                 bal := safeAdd(bal, amount)
                 sstore(slot, bal)
+            }
+
+            function addToBatch(account, amountOffset, token_idOffset, batchSize){
+                for { let i := 0x00} lte(i, batchSize) { i := add(i, 0x20) } {
+                    let token_id := calldataload(add(i, amountOffset))
+                    let slot:= accountToStorageOffset(account, token_id)
+                    let bal := sload(slot)
+                    bal := safeAdd(bal, amount)
+                    sstore(slot, bal)
+                }
             }
 
             function subtractTo(account,token_id,amount) {
@@ -321,7 +357,6 @@ object "Yul_Test" {
             function isContract(addr) -> ic {   
                 ic := gt(extcodesize(addr),0)
             }
-
             function require(condition) {
                 if iszero(condition) { revert(0, 0) }
             }
