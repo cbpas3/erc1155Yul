@@ -35,6 +35,7 @@ object "Yul_Test" {
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */{
                 require(eq(getArrayLength(2),getArrayLength(3)))
                 batchTransfer(decodeAsAddress(0),decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),getArrayLength(2),getArrayLength(3))
+                // emitTransferBatch(caller(), decodeAsAddress(0), decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),id_length,amount_length)
                 returnTrue()
             }
 
@@ -64,9 +65,9 @@ object "Yul_Test" {
                 let data_length_offset := calldataload(0x64)
 
                 for { let i := 0} lt(i, id_length) { i := add(i, 1) } { 
-                    mint(decodeAsAddress(0),calldataload(add(mul(i,0x20), id_first_elem_location)),calldataload(add(mul(i,0x20), amount_first_elem_location)))
+                    mint(decodeAsAddress(0),calldataload(add(mul(i,0x20), getFirstElementPosition(1))),calldataload(add(mul(i,0x20), getFirstElementPosition(2))))
                 }
-                emitTransferBatch(caller(), 0x00, decodeAsAddress(0), id_length_offset,amount_length_offset,id_length_location,amount_length_location,id_length,amount_length)
+                emitTransferBatch(caller(), 0x00, decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
                 require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),id_length_offset,amount_length_offset,data_length_offset))
                 returnTrue()
             }
@@ -291,17 +292,18 @@ object "Yul_Test" {
             }
 
 
-            function emitTransferBatch(operator, from, to, id_length_offset,amount_length_offset,id_length_location,amount_length_location,id_length,amount_length) {
+            function emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength) {
+                // caller(), 0x00, decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2)
                 let signatureHash := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
-                let offsetFor2ndArray := add(mul(0x20,id_length),0x60) // offset value for the data part of the second array (elements of first array + the 2 offsets + first length)
+                let offsetFor2ndArray := add(mul(0x20,topicIdLength),0x60) // offset value for the data part of the second array (elements of first array + the 2 offsets + first length)
                 mstore(fmp(), 0x0000000000000000000000000000000000000000000000000000000000000040)
                 mstore(
                     add(fmp(),0x20),  // memory location 
                      offsetFor2ndArray 
                 ) 
-                calldatacopy(add(fmp(),0x40),id_length_location,add(0x20,mul(0x20,id_length))) // size is the length + 0x20 to include length
-                calldatacopy(add(fmp(),offsetFor2ndArray), amount_length_location, add(0x20,mul(0x20,id_length)))
-                let totalElements := add(amount_length, id_length)
+                calldatacopy(add(fmp(),0x40),sub(topicIdStart,0x20),add(0x20,mul(0x20,topicIdLength))) // size is the length + 0x20 to include length
+                calldatacopy(add(fmp(),offsetFor2ndArray), sub(amountStart,0x20), add(0x20,mul(0x20,amountLength)))
+                let totalElements := add(topicIdLength, amountLength)
                 let totalElementsSize := mul(0x40,totalElements)
                 // let totalSize:= add(0x40,totalElementsSize)
                 log4(fmp(),totalElementsSize, signatureHash, operator, from, to)
