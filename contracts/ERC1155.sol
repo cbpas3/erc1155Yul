@@ -175,15 +175,6 @@ object "Yul_Test" {
             }
             function updateFmp(numberOfBytes) {
                 mstore(fmpPos(), add(fmp(), numberOfBytes))
-                
-                // let pos := fmp()
-                // switch pos
-                // case 0xa0 {
-                //     mstore(fmpPos(),add(0xc0,numberOfBytes))
-                // }
-                // default {
-                //     mstore(fmpPos(), add(fmp(), numberOfBytes))
-                // }
             }
 
         /* ---------- Storage Layout ----------*/
@@ -250,6 +241,7 @@ object "Yul_Test" {
 
             function batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize){
                  addToBatch(to, amountStartPosition, tokenIdStartPosition, tokenIdSize)
+                 subtractToBatch(from, amountStartPosition, tokenIdStartPosition, tokenIdSize)
             }
 
             function addTo(account,token_id,amount) {
@@ -263,10 +255,7 @@ object "Yul_Test" {
                 for { let i := 0x00} lte(i, mul(batchSize,0x20)) { i := add(i, 0x20) } {
                     let token_id := calldataload(add(i, token_idOffset))
                     let amount := calldataload(add(i, amountOffset))
-                    let slot:= accountToStorageOffset(account, token_id)
-                    let bal := sload(slot)
-                    bal := safeAdd(bal, amount)
-                    sstore(slot, bal)
+                    addTo(account,token_id,amount)
                 }
             }
 
@@ -276,6 +265,14 @@ object "Yul_Test" {
                 bal := sub(bal, amount)
                 sstore(slot, bal)
             } 
+
+            function subtractToBatch(account, amountOffset, token_idOffset, batchSize){
+                for { let i := 0x00} lte(i, mul(batchSize,0x20)) { i := add(i, 0x20) } {
+                    let token_id := calldataload(add(i, token_idOffset))
+                    let amount := calldataload(add(i, amountOffset))
+                    subtractTo(account,token_id,amount)
+                }
+            }
 
             function loadUriToMemory(){
                 mstore(0x00, 0x0000000000000000000000000000000000000000000000000000000000000020)
