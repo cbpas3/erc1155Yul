@@ -250,11 +250,11 @@ describe("ERC1155", () => {
       );
       // TODO: Update once batch balance is implemented
       expect(
-        await contractERC1155.balanceOf(accounts[1].address, 1)
-      ).to.be.equal(1);
-      expect(
-        await contractERC1155.balanceOf(accounts[1].address, 2)
-      ).to.be.equal(2);
+        await contractERC1155.balanceOfBatch(
+          [accounts[1].address, accounts[1].address],
+          [1, 2]
+        )
+      ).to.deep.equal([BigNumber.from(1), BigNumber.from(2)]);
     });
   });
 
