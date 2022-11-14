@@ -239,5 +239,22 @@ describe("ERC1155", () => {
         )
       ).to.be.reverted;
     });
+
+    it("should add to several balances at once", async function () {
+      await contractERC1155.safeBatchTransferFrom(
+        accounts[0].address,
+        accounts[1].address,
+        [1, 2],
+        [1, 2],
+        []
+      );
+      // TODO: Update once batch balance is implemented
+      expect(
+        await contractERC1155.balanceOf(accounts[1].address, 1)
+      ).to.be.equal(1);
+      expect(
+        await contractERC1155.balanceOf(accounts[1].address, 2)
+      ).to.be.equal(2);
+    });
   });
 });

@@ -238,7 +238,7 @@ object "Yul_Test" {
             }
 
             function addToBatch(account, amountOffset, token_idOffset, batchSize){
-                for { let i := 0x00} lte(i, batchSize) { i := add(i, 0x20) } {
+                for { let i := 0x00} lte(i, mul(batchSize,0x20)) { i := add(i, 0x20) } {
                     let token_id := calldataload(add(i, token_idOffset))
                     let amount := calldataload(add(i, amountOffset))
                     let slot:= accountToStorageOffset(account, token_id)
