@@ -22,6 +22,11 @@ object "Yul_Test" {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
 
+            case 0x4e1273f4 /* "balanceOfBatch(address[],uint256[])" */ {
+                let balancesStart := balanceOfBatch(getFirstElementPosition(0), getFirstElementPosition(1), getArrayLength(0))
+                returnArray(getArrayLength(0), balancesStart)
+            }
+
             case 0xf242432a /* "safeTransferFrom(address,address,uint256,uint256,bytes)" */ {
                 transfer(decodeAsAddress(0),decodeAsAddress(1),decodeAsUint(2),decodeAsUint(3)) // from, to, id, amount, bytes
                 returnTrue()
@@ -147,6 +152,15 @@ object "Yul_Test" {
             }
 
         /* ---------- calldata encoding functions ---------- */
+            function returnArray(arrayLength, arrayOffset){
+                mstore(fmp(),0x20)
+                mstore(add(fmp(),0x20),arrayLength)
+                for { let i := 0x00} lte(i, mul(arrayLength,0x20)) { i := add(i, 0x20) } {
+                    mstore(add(add(fmp(),0x40),i),mload(add(arrayOffset,i)))
+                }
+                return(fmp(),add(0x40,mul(arrayLength,0x020)))
+            }
+
             function returnUint(v) {
                 mstore(0, v)
                 return(0, 0x20)
@@ -193,6 +207,14 @@ object "Yul_Test" {
 
             function balanceOf(account, token_id) -> bal {
                 bal := sload(accountToStorageOffset(account, token_id))
+            }
+
+            function balanceOfBatch(accountsStart, idsStart, accountsSize) -> balancesStart {
+                balancesStart:= fmp()
+                for{let i := 0} lte(i,mul(accountsSize,0x20)){i:= add(i,0x20)}{
+                    mstore(fmp(),balanceOf(calldataload(add(accountsStart,i)),calldataload(add(idsStart,i))))
+                    updateFmp(0x20)
+                }
             }
 
             function owner() -> o {

@@ -257,4 +257,17 @@ describe("ERC1155", () => {
       ).to.be.equal(2);
     });
   });
+
+  describe("balanceOfBatch", async function () {
+    it("should return updated balances", async function () {
+      await contractERC1155.mint(accounts[0].address, 0, 3, []);
+      await contractERC1155.mint(accounts[1].address, 1, 4, []);
+      expect(
+        await contractERC1155.balanceOfBatch(
+          [accounts[0].address, accounts[1].address],
+          [0, 1]
+        )
+      ).to.deep.equal([BigNumber.from(3), BigNumber.from(4)]);
+    });
+  });
 });
