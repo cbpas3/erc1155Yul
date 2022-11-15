@@ -248,10 +248,13 @@ object "Yul_Test" {
                 }
                 
                 
-                // Only happens during transfers
+                // Only happens during transfers or burns
                 if gt(from,0){
                     // TO DO: add or condition once is ApprovedForAll is implemented
-                    require(eq(caller(),from))
+                    if gt(to,0){
+                        require(eq(caller(),from))
+                    }
+                    
                     
                     // making sure the sender has enough tokens to send
                     let slot:= accountToStorageOffset(from, token_id)
