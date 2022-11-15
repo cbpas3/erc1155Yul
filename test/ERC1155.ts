@@ -348,7 +348,7 @@ describe("ERC1155", () => {
   });
 
   describe("burnBatch", async function () {
-    it("should subtract to the balances", async function () {
+    it("should subtract to the balances of the user account", async function () {
       await contractERC1155.mintBatch(
         accounts[0].address,
         [0, 1, 2],
@@ -373,6 +373,54 @@ describe("ERC1155", () => {
       expect(
         await contractERC1155.balanceOfBatch(
           [accounts[0].address, accounts[0].address, accounts[0].address],
+          [0, 1, 2]
+        )
+      ).to.deep.equal([
+        BigNumber.from(0),
+        BigNumber.from(0),
+        BigNumber.from(0),
+      ]);
+    });
+
+    it("should subtract to the balances of the contract account", async function () {
+      const ContractFactoryTestReceiver = await ethers.getContractFactory(
+        "TestReceiver"
+      );
+      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
+      await contractTestReceiver.deployed();
+
+      await contractERC1155.mintBatch(
+        contractTestReceiver.address,
+        [0, 1, 2],
+        [1, 1, 1],
+        []
+      );
+      expect(
+        await contractERC1155.balanceOfBatch(
+          [
+            contractTestReceiver.address,
+            contractTestReceiver.address,
+            contractTestReceiver.address,
+          ],
+          [0, 1, 2]
+        )
+      ).to.deep.equal([
+        BigNumber.from(1),
+        BigNumber.from(1),
+        BigNumber.from(1),
+      ]);
+      await contractERC1155.burnBatch(
+        contractTestReceiver.address,
+        [0, 1, 2],
+        [1, 1, 1]
+      );
+      expect(
+        await contractERC1155.balanceOfBatch(
+          [
+            contractTestReceiver.address,
+            contractTestReceiver.address,
+            contractTestReceiver.address,
+          ],
           [0, 1, 2]
         )
       ).to.deep.equal([
