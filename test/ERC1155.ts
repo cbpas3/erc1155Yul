@@ -327,5 +327,23 @@ describe("ERC1155", () => {
         await contractERC1155.balanceOf(accounts[0].address, 0)
       ).to.be.equal(1);
     });
+
+    it("should burn tokens of contract", async function () {
+      const ContractFactoryTestReceiver = await ethers.getContractFactory(
+        "TestReceiver"
+      );
+      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
+      await contractTestReceiver.deployed();
+
+      await contractERC1155.mintBatch(
+        contractTestReceiver.address,
+        [1, 2],
+        [2, 2],
+        []
+      );
+
+      await expect(contractERC1155.burn(contractTestReceiver.address, 1, 2)).to
+        .be.ok;
+    });
   });
 });
