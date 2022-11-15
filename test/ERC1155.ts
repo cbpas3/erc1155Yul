@@ -264,6 +264,46 @@ describe("ERC1155", () => {
         )
       ).to.deep.equal([BigNumber.from(1), BigNumber.from(0)]);
     });
+
+    it("should transfer batch to contract address", async function () {
+      const ContractFactoryTestReceiver = await ethers.getContractFactory(
+        "TestReceiver"
+      );
+      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
+      await contractTestReceiver.deployed();
+
+      await contractERC1155.mintBatch(accounts[0].address, [1, 2], [2, 2], []);
+
+      await expect(
+        contractERC1155.safeBatchTransferFrom(
+          accounts[0].address,
+          contractTestReceiver.address,
+          [1, 2],
+          [1, 2],
+          []
+        )
+      ).to.be.ok;
+    });
+
+    it("should revert", async function () {
+      const ContractFactoryTestReceiver = await ethers.getContractFactory(
+        "TestReceiver2"
+      );
+      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
+      await contractTestReceiver.deployed();
+
+      await contractERC1155.mintBatch(accounts[0].address, [1, 2], [2, 2], []);
+
+      await expect(
+        contractERC1155.safeBatchTransferFrom(
+          accounts[0].address,
+          contractTestReceiver.address,
+          [1, 2],
+          [1, 2],
+          []
+        )
+      ).to.be.reverted;
+    });
   });
 
   describe("balanceOfBatch", async function () {
