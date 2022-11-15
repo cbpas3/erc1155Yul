@@ -126,5 +126,7 @@ interface IERC1155 is IERC165 {
     function mint(address,uint256,uint256,bytes memory) external returns(bool);
     function uri(uint256) external view returns(string memory);
     function mintBatch(address, uint256[] memory, uint256[] memory ,bytes memory) external returns(bool);
+    function burn(address,uint256,uint256) external returns(bool);
+    function burnBatch(address,uint256[] memory,uint256[] memory) external returns(bool);
 
 }

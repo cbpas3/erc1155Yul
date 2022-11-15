@@ -278,4 +278,14 @@ describe("ERC1155", () => {
       ).to.deep.equal([BigNumber.from(3), BigNumber.from(4)]);
     });
   });
+
+  describe("burn", async function () {
+    it("should return updated balance", async function () {
+      await contractERC1155.mint(accounts[0].address, 0, 3, []);
+      await contractERC1155.burn(accounts[0].address, 0, 2);
+      expect(
+        await contractERC1155.balanceOf(accounts[0].address, 0)
+      ).to.be.equal(1);
+    });
+  });
 });

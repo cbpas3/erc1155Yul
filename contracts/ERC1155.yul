@@ -28,47 +28,72 @@ object "Yul_Test" {
             }
 
             case 0xf242432a /* "safeTransferFrom(address,address,uint256,uint256,bytes)" */ {
+                revertIfZeroAddress(decodeAsAddress(1))
                 transfer(decodeAsAddress(0),decodeAsAddress(1),decodeAsUint(2),decodeAsUint(3)) // from, to, id, amount, bytes
                 returnTrue()
             }
 
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */{
+                revertIfZeroAddress(decodeAsAddress(0))
                 require(eq(getArrayLength(2),getArrayLength(3)))
+
+                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
                 batchTransfer(decodeAsAddress(0),decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),getArrayLength(2),getArrayLength(3))
-                // emitTransferBatch(caller(), decodeAsAddress(0), decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),id_length,amount_length)
+
+                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
+                emitTransferBatch(caller(), decodeAsAddress(0), decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),getArrayLength(2),getArrayLength(3))
+                require(doSafeBatchTransferAcceptanceCheck(caller(),decodeAsAddress(0),decodeAsAddress(1),sub(getFirstElementPosition(2),0x20),sub(getFirstElementPosition(3),0x20),calldataload(0x84)))
                 returnTrue()
             }
 
 
             case 0x731133e9 /* "mint(address,uint25,uint25,bytes)" */ {
+                revertIfZeroAddress(decodeAsAddress(0))
                 mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2)) //account,token_id,amount
                 returnTrue()
             }
-
+            
+            // mintBatch(address to,uint256[] memory ids,uint256[] memory amounts,bytes memory data)
             case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
-                
-                // ids
-                let id_length_offset := calldataload(0x24)
-                let id_length_location := add(4, id_length_offset)
-                let id_length := calldataload(id_length_location)
-                let id_first_elem_location := add(id_length_location, 0x20)
-
-                // amounts
-                let amount_length_offset := calldataload(0x44)   
-                let amount_length_location := add(4, amount_length_offset)
-                let amount_length := calldataload(amount_length_location)
-                let amount_first_elem_location := add(amount_length_location, 0x20)
+                // When minting the from address is set to the zero address
+  
+                // Not allowed to mint to the zero address
                 revertIfZeroAddress(decodeAsAddress(0))
-                require(eq(id_length,amount_length))
 
-                // bytes
-                let data_length_offset := calldataload(0x64)
-
-                for { let i := 0} lt(i, id_length) { i := add(i, 1) } { 
-                    mint(decodeAsAddress(0),calldataload(add(mul(i,0x20), getFirstElementPosition(1))),calldataload(add(mul(i,0x20), getFirstElementPosition(2))))
-                }
+                // the length of the token ids array must be the same as the length of the token amount array
+                require(eq(getArrayLength(1),getArrayLength(2)))
+                
+                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
+                batchTransfer(0x00,decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
+                
+                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
                 emitTransferBatch(caller(), 0x00, decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
-                require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),id_length_offset,amount_length_offset,data_length_offset))
+
+                // doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset)
+                require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),sub(getFirstElementPosition(1),0x20),sub(getFirstElementPosition(2),0x20),sub(getFirstElementPosition(3),0x20)))
+                returnTrue()
+            }
+
+            // function burn(address from,uint256 id,uint256 amount)
+            case 0xf5298aca /* "burn(address,uint256,uint256)" */{
+                // to must be set to the zero address
+                transfer(decodeAsAddress(0),0x00,decodeAsUint(1),decodeAsUint(2)) // from, to, id, amount, bytes
+
+
+                returnTrue()
+            }
+
+            // function burnBatch(address from,uint256[] memory ids,uint256[] memory amounts)
+            case 0x6b20c454 /* "burnBatch(address,uint256[],uint256[])" */{
+                // to must be set to the zero address
+
+                // from address should not be the zero address
+                revertIfZeroAddress(decodeAsAddress(0))
+
+
+                require(eq(getArrayLength(1),getArrayLength(2)))
+                batchTransfer(decodeAsAddress(0),0x00,getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
+                emitTransferBatch(caller(), decodeAsAddress(0), 0x00,getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
                 returnTrue()
             }
 
@@ -218,16 +243,22 @@ object "Yul_Test" {
             }
 
             function transfer(from,to,token_id,amount) {
-                revertIfZeroAddress(to)
-                addTo(to,token_id,amount)
+                if gt(to,0){
+                    addTo(to,token_id,amount)
+                }
+                
                 
                 // Only happens during transfers
                 if gt(from,0){
                     // TO DO: add or condition once is ApprovedForAll is implemented
                     require(eq(caller(),from))
+                    
+                    // making sure the sender has enough tokens to send
                     let slot:= accountToStorageOffset(from, token_id)
                     let bal := sload(slot)
                     require(gte(bal, amount))
+
+                    
                     subtractTo(from,token_id,amount)
                 }
     
@@ -241,8 +272,12 @@ object "Yul_Test" {
             }  
 
             function batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize){
-                 addToBatch(to, amountStartPosition, tokenIdStartPosition, tokenIdSize)
-                 subtractToBatch(from, amountStartPosition, tokenIdStartPosition, tokenIdSize)
+                if gt(to,0){
+                    addToBatch(to, amountStartPosition, tokenIdStartPosition, tokenIdSize)
+                }
+                if gt(from,0){
+                    subtractToBatch(from, amountStartPosition, tokenIdStartPosition, tokenIdSize)
+                }
             }
 
             function addTo(account,token_id,amount) {
@@ -293,7 +328,6 @@ object "Yul_Test" {
 
 
             function emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength) {
-                // caller(), 0x00, decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2)
                 let signatureHash := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
                 let offsetFor2ndArray := add(mul(0x20,topicIdLength),0x60) // offset value for the data part of the second array (elements of first array + the 2 offsets + first length)
                 mstore(fmp(), 0x0000000000000000000000000000000000000000000000000000000000000040)
