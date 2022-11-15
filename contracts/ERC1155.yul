@@ -102,6 +102,16 @@ object "Yul_Test" {
                 return(0x00, 0x80)
             }
 
+            // function setApprovalForAll(operator, approval)
+            case 0xa22cb465 /* "setApprovalForAll(address,bool)" */{
+                setApprovalForAll(decodeAsAddress(0),decodeAsUint(1))
+            }
+
+            // function isApprovedForAll(address account, address operator)
+            case 0xe985e9c5 /* "isApprovedForAll(address,address)" */ {
+                returnUint(isApprovedForAll(decodeAsAddress(0),decodeAsAddress(1)))
+            }
+
 
             default {
                 mstore(0x00,selector())
@@ -213,6 +223,7 @@ object "Yul_Test" {
                 mstore(0x40,account)
                 offset := keccak256(0,0x60)
             }
+
             function allowanceStorageOffset(account, operator) -> offset {
                 mstore(0x00,0xa0)
                 mstore(0x20,account)
@@ -236,6 +247,16 @@ object "Yul_Test" {
 
             function owner() -> o {
                 o := sload(ownerPos())
+            }
+
+            function setApprovalForAll(operator,approved){
+                require(notEq(caller(),operator))
+                sstore(allowanceStorageOffset(caller(),operator), approved)
+                emitApprovalForAll(caller(),operator,approved)
+            }
+
+            function isApprovedForAll(account, operator) -> approved {
+                approved := sload(allowanceStorageOffset(account, operator))
             }
 
             function mint(account,token_id,amount) {
@@ -346,11 +367,23 @@ object "Yul_Test" {
                 log4(fmp(),totalElementsSize, signatureHash, operator, from, to)
             }
 
+            function emitApprovalForAll(account, operator, approved){
+                let signatureHash:= 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31
+                mstore(0, account)
+                mstore(0x20, operator)
+                mstore(0x40, approved)
+                log4(0, 0, signatureHash, account, operator, approved)
+            }
+
 
 
         /* ---------- utility functions ---------- */
             function lte(a, b) -> r {
                 r := iszero(gt(a, b))
+            }
+
+            function notEq(a,b) -> r {
+                r:= iszero(eq(a,b))
             }
 
             function doSafeTransferAcceptanceCheck(operator,from,to,id,amount,data_offset) -> success {

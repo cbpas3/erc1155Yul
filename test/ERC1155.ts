@@ -430,4 +430,22 @@ describe("ERC1155", () => {
       ]);
     });
   });
+
+  describe("setApprovalForAll and isApprovedForAll", async function () {
+    it("should initially be set to false then return true after setting it to approved", async function () {
+      expect(
+        await contractERC1155.isApprovedForAll(
+          accounts[0].address,
+          accounts[1].address
+        )
+      ).to.be.false;
+      await contractERC1155.setApprovalForAll(accounts[1].address, true);
+      expect(
+        await contractERC1155.isApprovedForAll(
+          accounts[0].address,
+          accounts[1].address
+        )
+      ).to.be.true;
+    });
+  });
 });
