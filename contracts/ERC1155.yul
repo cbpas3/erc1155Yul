@@ -36,6 +36,7 @@ object "Yul_Test" {
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */{
                 revertIfZeroAddress(decodeAsAddress(0))
                 require(eq(getArrayLength(2),getArrayLength(3)))
+                require(or(eq(caller(),decodeAsAddress(0)),isApprovedForAll(decodeAsAddress(0),caller())))
 
                 // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
                 batchTransfer(decodeAsAddress(0),decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),getArrayLength(2),getArrayLength(3))
@@ -104,6 +105,7 @@ object "Yul_Test" {
 
             // function setApprovalForAll(operator, approval)
             case 0xa22cb465 /* "setApprovalForAll(address,bool)" */{
+                require(notEq(decodeAsAddress(0),caller()))
                 setApprovalForAll(decodeAsAddress(0),decodeAsUint(1))
             }
 
@@ -273,7 +275,7 @@ object "Yul_Test" {
                 if gt(from,0){
                     // TO DO: add or condition once is ApprovedForAll is implemented
                     if gt(to,0){
-                        require(eq(caller(),from))
+                        require(or(eq(caller(),from),isApprovedForAll(from,caller())))
                     }
                     
                     
