@@ -70,7 +70,7 @@ object "Yul_Test" {
                 emitTransferBatch(caller(), 0x00, decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
 
                 // doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset)
-                require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),sub(getFirstElementPosition(1),0x20),sub(getFirstElementPosition(2),0x20),sub(getFirstElementPosition(3),0x20)))
+                require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),sub(getFirstElementPosition(1),0x20),sub(getFirstElementPosition(2),0x20),calldataload(0x64)))
                 returnTrue()
             }
 
@@ -376,8 +376,9 @@ object "Yul_Test" {
 
             function doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset) -> success {
                 success:= 0
-                let ids_new_offset := add(0x20,ids_offset)
-                let amounts_new_offset := add(0x20,amounts_offset)
+                // adjustments 
+                let ids_new_offset := add(0x1c,ids_offset)
+                let amounts_new_offset := add(0x1c,amounts_offset)
                 let data_new_offset := add(0x20, data_offset)
                 if isContract(to) {
                     // function signature `onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)`
