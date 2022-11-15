@@ -346,4 +346,40 @@ describe("ERC1155", () => {
         .be.ok;
     });
   });
+
+  describe("burnBatch", async function () {
+    it("should subtract to the balances", async function () {
+      await contractERC1155.mintBatch(
+        accounts[0].address,
+        [0, 1, 2],
+        [1, 1, 1],
+        []
+      );
+      expect(
+        await contractERC1155.balanceOfBatch(
+          [accounts[0].address, accounts[0].address, accounts[0].address],
+          [0, 1, 2]
+        )
+      ).to.deep.equal([
+        BigNumber.from(1),
+        BigNumber.from(1),
+        BigNumber.from(1),
+      ]);
+      await contractERC1155.burnBatch(
+        accounts[0].address,
+        [0, 1, 2],
+        [1, 1, 1]
+      );
+      expect(
+        await contractERC1155.balanceOfBatch(
+          [accounts[0].address, accounts[0].address, accounts[0].address],
+          [0, 1, 2]
+        )
+      ).to.deep.equal([
+        BigNumber.from(0),
+        BigNumber.from(0),
+        BigNumber.from(0),
+      ]);
+    });
+  });
 });
