@@ -113,6 +113,10 @@ object "Yul_Test" {
             case 0xe985e9c5 /* "isApprovedForAll(address,address)" */ {
                 returnUint(isApprovedForAll(decodeAsAddress(0),decodeAsAddress(1)))
             }
+            // function supportsInterface(bytes4 interfaceId)
+            case 0x01ffc9a7 /* "supportsInterface(bytes4)" */{
+                returnUint(or(eq(calldataload(0x04),0xd9b67a2600000000000000000000000000000000000000000000000000000000), eq(calldataload(0x04),0x01ffc9a700000000000000000000000000000000000000000000000000000000))
+            }
 
 
             default {

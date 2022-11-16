@@ -38,6 +38,8 @@ describe("ERC1155", () => {
   let contractERC1155: any = null;
   let accounts: any = null;
   let provider = null;
+  let receiverContract1: any = null;
+  let receiverContract2: any = null;
 
   beforeEach(async function () {
     const ContractFactoryERC1155 = await ethers.getContractFactory(
@@ -50,13 +52,18 @@ describe("ERC1155", () => {
     );
     contractERC1155 = await ERC1155.deploy();
     await contractERC1155.deployed();
-    // console.log("ERC1155 deployed to:", contractERC1155.address);
 
-    // contractERC1155 = await ContractFactoryERC1155.deploy();
+    const ContractFactoryTestReceiver = await ethers.getContractFactory(
+      "TestReceiver"
+    );
+    receiverContract1 = await ContractFactoryTestReceiver.deploy();
+    await receiverContract1.deployed();
 
-    // await contractERC1155.deployed();
-    // const yulContractAddress = await contractERC1155.getYulContractAddress();
-    // yulContract = ethers.getContractAt("IERC1155", yulContractAddress);
+    const ContractFactoryTestReceiver2 = await ethers.getContractFactory(
+      "TestReceiver2"
+    );
+    receiverContract2 = await ContractFactoryTestReceiver2.deploy();
+    await receiverContract2.deployed();
 
     accounts = await ethers.getSigners();
     provider = await ethers.provider;
@@ -89,36 +96,30 @@ describe("ERC1155", () => {
 
   describe("mint", async function () {
     it("should mint to contract address", async function () {
-      const ContractFactoryTestReceiver = await ethers.getContractFactory(
-        "TestReceiver"
-      );
-      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
-      await contractTestReceiver.deployed();
       await expect(
-        await contractERC1155.mint(contractTestReceiver.address, 0, 3, [])
+        await contractERC1155.mint(receiverContract1.address, 0, 3, [])
       ).to.be.ok;
     });
-    it("should revert", async function () {
-      const ContractFactoryTestReceiver = await ethers.getContractFactory(
-        "TestReceiver2"
-      );
-      const contractTestReceiver = await ContractFactoryTestReceiver.deploy();
-      await contractTestReceiver.deployed();
-      await expect(contractERC1155.mint(contractTestReceiver.address, 0, 3, []))
+    it("should revert because the contract address doesn't support ERC 1155", async function () {
+      await expect(contractERC1155.mint(receiverContract2.address, 0, 3, [])).to
+        .be.reverted;
+    });
+    it("should revert when minting to a zero address", async function () {
+      await expect(contractERC1155.mint(ethers.constants.AddressZero, 0, 1, []))
         .to.be.reverted;
     });
-    // it("should emit the Transfer event", async function () {
-    //   contractERC1155.mint(accounts[0].address, 0, 3, []);
-    //   await expect(contractERC1155.mint(accounts[0].address, 0, 3, []))
-    //     .to.emit(contractERC1155, "TransferSingle")
-    //     .withArgs(
-    //       accounts[0].address,
-    //       ethers.constants.AddressZero,
-    //       accounts[0].address,
-    //       0,
-    //       3
-    //     );
-    // });
+    it("should emit the Transfer event", async function () {
+      contractERC1155.mint(accounts[0].address, 0, 3, []);
+      await expect(contractERC1155.mint(accounts[0].address, 0, 3, []))
+        .to.emit(contractERC1155, "TransferSingle")
+        .withArgs(
+          accounts[0].address,
+          ethers.constants.AddressZero,
+          accounts[0].address,
+          0,
+          3
+        );
+    });
   });
   describe("mintBatch", async function () {
     it("should revert when to is a zero address", async function () {
