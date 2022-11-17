@@ -18,70 +18,37 @@ object "Yul_Test" {
             // Set free memory pointer
             mstore(fmpPos(), 0xc0)
             switch selector()
+
             case 0x00fdd58e /* "balanceOf(address,uint256)" */ {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
 
             case 0x4e1273f4 /* "balanceOfBatch(address[],uint256[])" */ {
-                let balancesStart := balanceOfBatch(getFirstElementPosition(0), getFirstElementPosition(1), getArrayLength(0))
-                returnArray(getArrayLength(0), balancesStart)
+                returnArray(getArrayLength(0), balanceOfBatch(getFirstElementPosition(0), getFirstElementPosition(1), getArrayLength(0)))
             }
 
             case 0xf242432a /* "safeTransferFrom(address,address,uint256,uint256,bytes)" */ {
-                revertIfZeroAddress(decodeAsAddress(1))
-                transfer(decodeAsAddress(0),decodeAsAddress(1),decodeAsUint(2),decodeAsUint(3)) // from, to, id, amount, bytes
-                returnTrue()
+                safeTransferFrom(decodeAsAddress(0), decodeAsAddress(1),decodeAsUint(2), decodeAsUint(3))
             }
 
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */{
-                revertIfZeroAddress(decodeAsAddress(0))
-                require(eq(getArrayLength(2),getArrayLength(3)))
-                require(or(eq(caller(),decodeAsAddress(0)),isApprovedForAll(decodeAsAddress(0),caller())))
-
-                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
-                batchTransfer(decodeAsAddress(0),decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),getArrayLength(2),getArrayLength(3))
-
-                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
-                emitTransferBatch(caller(), decodeAsAddress(0), decodeAsAddress(1),getFirstElementPosition(2),getFirstElementPosition(3),getArrayLength(2),getArrayLength(3))
-                require(doSafeBatchTransferAcceptanceCheck(caller(),decodeAsAddress(0),decodeAsAddress(1),sub(getFirstElementPosition(2),0x20),sub(getFirstElementPosition(3),0x20),calldataload(0x84)))
-                returnTrue()
+                safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), getFirstElementPosition(2), getFirstElementPosition(3), getArrayLength(2), getArrayLength(3))
             }
 
-
             case 0x731133e9 /* "mint(address,uint25,uint25,bytes)" */ {
-                revertIfZeroAddress(decodeAsAddress(0))
-                mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2)) //account,token_id,amount
-                returnTrue()
+                mint(decodeAsAddress(0), decodeAsUint(1), decodeAsUint(2)) //account,tokenId,amount
             }
             
             // mintBatch(address to,uint256[] memory ids,uint256[] memory amounts,bytes memory data)
             case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
-                // When minting the from address is set to the zero address
-  
-                // Not allowed to mint to the zero address
-                revertIfZeroAddress(decodeAsAddress(0))
-
-                // the length of the token ids array must be the same as the length of the token amount array
-                require(eq(getArrayLength(1),getArrayLength(2)))
-                
-                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
-                batchTransfer(0x00,decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
-                
-                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
-                emitTransferBatch(caller(), 0x00, decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
-
-                // doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset)
-                require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,decodeAsAddress(0),sub(getFirstElementPosition(1),0x20),sub(getFirstElementPosition(2),0x20),calldataload(0x64)))
-                returnTrue()
+                mintBatch(decodeAsAddress(0),getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
             }
 
             // function burn(address from,uint256 id,uint256 amount)
             case 0xf5298aca /* "burn(address,uint256,uint256)" */{
                 // to must be set to the zero address
-                transfer(decodeAsAddress(0),0x00,decodeAsUint(1),decodeAsUint(2)) // from, to, id, amount, bytes
+                burn(decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2))
 
-
-                returnTrue()
             }
 
             // function burnBatch(address from,uint256[] memory ids,uint256[] memory amounts)
@@ -115,13 +82,84 @@ object "Yul_Test" {
             }
             // function supportsInterface(bytes4 interfaceId)
             case 0x01ffc9a7 /* "supportsInterface(bytes4)" */{
-                returnUint(or(eq(calldataload(0x04),0xd9b67a2600000000000000000000000000000000000000000000000000000000), eq(calldataload(0x04),0x01ffc9a700000000000000000000000000000000000000000000000000000000))
+                returnUint(or(eq(calldataload(0x04),0xd9b67a2600000000000000000000000000000000000000000000000000000000), eq(calldataload(0x04),0x01ffc9a700000000000000000000000000000000000000000000000000000000)))
             }
 
 
             default {
                 mstore(0x00,selector())
                 return(0,0x20)
+            }
+
+            /* Core functions */ 
+            function balanceOf(account, tokenId) -> bal {
+                // Returns the balance of the given token of the given account 
+                // account: address
+                // tokenId: uint256
+                bal := sload(accountToStorageOffset(account, tokenId))
+            }
+
+            function balanceOfBatch(accountsStart, idsStart, accountsSize) -> balancesStart {
+                // Returns location of the first element of the balances array in memory
+                // accountsStart: memory slot
+                // idsStart: memory slot
+                // accountsSize: uint256
+                balancesStart:= fmp()
+                for{let i := 0} lte(i,mul(accountsSize,0x20)){i:= add(i,0x20)}{
+                    mstore(fmp(),balanceOf(calldataload(add(accountsStart,i)),calldataload(add(idsStart,i))))
+                    updateFmp(0x20)
+                }
+            }
+
+            function safeTransferFrom(from, to, tokenId, amount){
+                revertIfZeroAddress(to)
+                transfer(from,to,tokenId,amount)
+                returnTrue()
+            }
+
+            function safeBatchTransferFrom(from,to,tokenIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength){
+                revertIfZeroAddress(from)
+                require(eq(topicIdLength,amountLength))
+                require(or(eq(caller(),from),isApprovedForAll(from,caller())))
+
+                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
+                batchTransfer(from,to,tokenIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
+
+                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
+                emitTransferBatch(caller(), from, to,tokenIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
+                require(doSafeBatchTransferAcceptanceCheck(caller(),from,to,sub(tokenIdFirstElementPosition,0x20),sub(amountFirstElementPosition,0x20),calldataload(0x84)))
+                returnTrue()
+            }
+
+            function mint(to,tokenId,amount) {
+                revertIfZeroAddress(to)
+                transfer(0x00,to,tokenId,amount)
+                returnTrue()
+            }
+
+            function mintBatch(to,topicIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength){
+                // When minting the from address is set to the zero address
+                
+                // Not allowed to mint to the zero address
+                revertIfZeroAddress(to)
+
+                // the length of the token ids array must be the same as the length of the token amount array
+                require(eq(topicIdLength,amountLength))
+                
+                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
+                batchTransfer(0x00,to,topicIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
+                
+                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
+                emitTransferBatch(caller(), 0x00, to,topicIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
+
+                // doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset)
+                require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,to,sub(topicIdFirstElementPosition,0x20),sub(amountFirstElementPosition,0x20),calldataload(0x64)))
+                returnTrue()
+            }
+
+            function burn(from, topicId, amount){
+                transfer(from,0x00,topicId,amount)
+                returnTrue()
             }
 
             /* ---------- calldata decoding functions ----------- */
@@ -223,9 +261,9 @@ object "Yul_Test" {
 
             function ownerPos() -> p { p := 0x00 }
             function uriPos() -> p { p := 0x20 }
-            function accountToStorageOffset(account, token_id) -> offset {
+            function accountToStorageOffset(account, tokenId) -> offset {
                 mstore(0x00,0x80)
-                mstore(0x20,token_id)
+                mstore(0x20,tokenId)
                 mstore(0x40,account)
                 offset := keccak256(0,0x60)
             }
@@ -239,17 +277,7 @@ object "Yul_Test" {
 
         /* ---------- Storage Access ---------- */
 
-            function balanceOf(account, token_id) -> bal {
-                bal := sload(accountToStorageOffset(account, token_id))
-            }
 
-            function balanceOfBatch(accountsStart, idsStart, accountsSize) -> balancesStart {
-                balancesStart:= fmp()
-                for{let i := 0} lte(i,mul(accountsSize,0x20)){i:= add(i,0x20)}{
-                    mstore(fmp(),balanceOf(calldataload(add(accountsStart,i)),calldataload(add(idsStart,i))))
-                    updateFmp(0x20)
-                }
-            }
 
             function owner() -> o {
                 o := sload(ownerPos())
@@ -265,13 +293,11 @@ object "Yul_Test" {
                 approved := sload(allowanceStorageOffset(account, operator))
             }
 
-            function mint(account,token_id,amount) {
-                transfer(0x00,account,token_id,amount)
-            }
 
-            function transfer(from,to,token_id,amount) {
+
+            function transfer(from,to,tokenId,amount) {
                 if gt(to,0){
-                    addTo(to,token_id,amount)
+                    addTo(to,tokenId,amount)
                 }
                 
                 
@@ -284,21 +310,19 @@ object "Yul_Test" {
                     
                     
                     // making sure the sender has enough tokens to send
-                    let slot:= accountToStorageOffset(from, token_id)
+                    let slot:= accountToStorageOffset(from, tokenId)
                     let bal := sload(slot)
                     require(gte(bal, amount))
 
                     
-                    subtractTo(from,token_id,amount)
+                    subtractTo(from,tokenId,amount)
                 }
     
-                emitTransferSingle(caller(), from, to, token_id, amount)
+                emitTransferSingle(caller(), from, to, tokenId, amount)
                 if isContract(to){
                     let data_length_offset := calldataload(0x64)
-                    require(doSafeTransferAcceptanceCheck(caller(),0x00,to,token_id,amount,data_length_offset))
-    
-                }
-                
+                    require(doSafeTransferAcceptanceCheck(caller(),0x00,to,tokenId,amount,data_length_offset))
+                } 
             }  
 
             function batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize){
@@ -310,33 +334,33 @@ object "Yul_Test" {
                 }
             }
 
-            function addTo(account,token_id,amount) {
-                let slot:= accountToStorageOffset(account, token_id)
+            function addTo(account,tokenId,amount) {
+                let slot:= accountToStorageOffset(account, tokenId)
                 let bal := sload(slot)
                 bal := safeAdd(bal, amount)
                 sstore(slot, bal)
             }
 
-            function addToBatch(account, amountOffset, token_idOffset, batchSize){
+            function addToBatch(account, amountOffset, tokenIdOffset, batchSize){
                 for { let i := 0x00} lte(i, mul(batchSize,0x20)) { i := add(i, 0x20) } {
-                    let token_id := calldataload(add(i, token_idOffset))
+                    let tokenId := calldataload(add(i, tokenIdOffset))
                     let amount := calldataload(add(i, amountOffset))
-                    addTo(account,token_id,amount)
+                    addTo(account,tokenId,amount)
                 }
             }
 
-            function subtractTo(account,token_id,amount) {
-                let slot:= accountToStorageOffset(account, token_id)
+            function subtractTo(account,tokenId,amount) {
+                let slot:= accountToStorageOffset(account, tokenId)
                 let bal := sload(slot)
                 bal := sub(bal, amount)
                 sstore(slot, bal)
             } 
 
-            function subtractToBatch(account, amountOffset, token_idOffset, batchSize){
+            function subtractToBatch(account, amountOffset, tokenIdOffset, batchSize){
                 for { let i := 0x00} lte(i, mul(batchSize,0x20)) { i := add(i, 0x20) } {
-                    let token_id := calldataload(add(i, token_idOffset))
+                    let tokenId := calldataload(add(i, tokenIdOffset))
                     let amount := calldataload(add(i, amountOffset))
-                    subtractTo(account,token_id,amount)
+                    subtractTo(account,tokenId,amount)
                 }
             }
 
