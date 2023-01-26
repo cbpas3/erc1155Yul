@@ -1,13 +1,5 @@
-# Sample Hardhat Project
+# ERC 1155 Implementation in Yul
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+## About the project
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
-```
+Part of the Rareskills Blockchain Engineer fellowship, this project was for us to master Yul and more importantly understand how Solidity works under the hood. Through this we were forced to understand how Solidity handles memory, storage, parameters when a function is called and how values are returned at the end of the execution of a function.

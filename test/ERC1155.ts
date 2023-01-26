@@ -135,7 +135,12 @@ describe("ERC1155", () => {
 
     it("should revert when ids !==  amounts", async function () {
       await expect(
-        contractERC1155.mintBatch(accounts[0].address, [0, 2], [2], [])
+        contractERC1155.mintBatch(
+          accounts[0].address,
+          [0, 2],
+          [2],
+          "0x12345678"
+        )
       ).to.be.reverted;
     });
 

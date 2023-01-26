@@ -46,33 +46,20 @@ object "Yul_Test" {
 
             // function burn(address from,uint256 id,uint256 amount)
             case 0xf5298aca /* "burn(address,uint256,uint256)" */{
-                // to must be set to the zero address
                 burn(decodeAsAddress(0),decodeAsUint(1),decodeAsUint(2))
-
             }
 
             // function burnBatch(address from,uint256[] memory ids,uint256[] memory amounts)
             case 0x6b20c454 /* "burnBatch(address,uint256[],uint256[])" */{
-                // to must be set to the zero address
-
-                // from address should not be the zero address
-                revertIfZeroAddress(decodeAsAddress(0))
-
-
-                require(eq(getArrayLength(1),getArrayLength(2)))
-                batchTransfer(decodeAsAddress(0),0x00,getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
-                emitTransferBatch(caller(), decodeAsAddress(0), 0x00,getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
-                returnTrue()
+                burnBatch(decodeAsAddress(0), getFirstElementPosition(1),getFirstElementPosition(2),getArrayLength(1),getArrayLength(2))
             }
 
             case 0x0e89341c /* "uri(uint256)" */ {
-                loadUriToMemory()
-                return(0x00, 0x80)
+                uri()
             }
 
             // function setApprovalForAll(operator, approval)
             case 0xa22cb465 /* "setApprovalForAll(address,bool)" */{
-                require(notEq(decodeAsAddress(0),caller()))
                 setApprovalForAll(decodeAsAddress(0),decodeAsUint(1))
             }
 
@@ -84,7 +71,6 @@ object "Yul_Test" {
             case 0x01ffc9a7 /* "supportsInterface(bytes4)" */{
                 returnUint(or(eq(calldataload(0x04),0xd9b67a2600000000000000000000000000000000000000000000000000000000), eq(calldataload(0x04),0x01ffc9a700000000000000000000000000000000000000000000000000000000)))
             }
-
 
             default {
                 mstore(0x00,selector())
@@ -112,54 +98,92 @@ object "Yul_Test" {
             }
 
             function safeTransferFrom(from, to, tokenId, amount){
+                // Transfers tokens from the 'from' address to the 'to' address
+                // Reverts if 'to' address is the zero address
+                // Returns true if successful 
+                // from: address
+                // to: address
+                // tokenId: uint256
+                // amount: uint256
+
                 revertIfZeroAddress(to)
+                require(or(eq(caller(),from),isApprovedForAll(from,caller())))
                 transfer(from,to,tokenId,amount)
                 returnTrue()
             }
 
             function safeBatchTransferFrom(from,to,tokenIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength){
-                revertIfZeroAddress(from)
+                // Transfers different tokens from 'from' address to 'to' address in one transaction
+                // Reverts if 'to' address is the zero address
+                // Returns true if successful 
+                // from: address
+                // to: address
+                // tokenIdFirstElementPosition: memory slot
+                // amountFirstElementPosition: memory slot
+                // topicLength: uint256
+                // amountLength: uint256
+                revertIfZeroAddress(to)
                 require(eq(topicIdLength,amountLength))
                 require(or(eq(caller(),from),isApprovedForAll(from,caller())))
 
-                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
                 batchTransfer(from,to,tokenIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
-
-                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
                 emitTransferBatch(caller(), from, to,tokenIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
+
+                // first element position slots are subtracted by 32-bytes before passing to the function because the position of
+                // the slot holding the value of the length of the array is required by the function
                 require(doSafeBatchTransferAcceptanceCheck(caller(),from,to,sub(tokenIdFirstElementPosition,0x20),sub(amountFirstElementPosition,0x20),calldataload(0x84)))
                 returnTrue()
             }
 
             function mint(to,tokenId,amount) {
+                // Transfers token with given token id to 'to' address from zero address
+                // Reverts if 'to' address is the zero address
+                // returns true if successful
+                // to: address
+                // tokenId: uint256
+                // amount: uint256
+
                 revertIfZeroAddress(to)
                 transfer(0x00,to,tokenId,amount)
                 returnTrue()
             }
 
             function mintBatch(to,topicIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength){
-                // When minting the from address is set to the zero address
+                // Transfers a given amount of tokens with corresponding token ids to 'to' address from zero address
+                // Reverts if 'to' address is the zero address
+                // Reverts if topic ids array length does not equal the amounts array length
+                // returns true if successful
+                // to: address
+                // tokenIdFirstElementPosition: memory slot
+                // amountFirstElementPosition: memory slot
+                // topicLength: uint256
+                // amountLength: uint256
                 
-                // Not allowed to mint to the zero address
                 revertIfZeroAddress(to)
-
-                // the length of the token ids array must be the same as the length of the token amount array
                 require(eq(topicIdLength,amountLength))
-                
-                // batchTransfer(from, to, tokenIdStartPosition, amountStartPosition, tokenIdSize, amountSize)
                 batchTransfer(0x00,to,topicIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
-                
-                // emitTransferBatch(operator, from, to,topicIdStart,amountStart,topicIdLength,amountLength)
                 emitTransferBatch(caller(), 0x00, to,topicIdFirstElementPosition,amountFirstElementPosition,topicIdLength,amountLength)
-
-                // doSafeBatchTransferAcceptanceCheck(operator,from,to,ids_offset,amounts_offset,data_offset)
                 require(doSafeBatchTransferAcceptanceCheck(caller(),0x00,to,sub(topicIdFirstElementPosition,0x20),sub(amountFirstElementPosition,0x20),calldataload(0x64)))
                 returnTrue()
             }
 
             function burn(from, topicId, amount){
+                // to must be set to the zero address
                 transfer(from,0x00,topicId,amount)
                 returnTrue()
+            }
+
+            function burnBatch(from, tokenIdFirstElementPosition, amountFirstElementPosition, tokenidLength, amountLength){
+                revertIfZeroAddress(from)
+                require(eq(tokenIdLength,amountLength))
+                batchTransfer(from,0x00,tokenIdFirstElementPosition,amountFirstElementPosition,tokenIdLength,amountLength)
+                emitTransferBatch(caller(), from, 0x00,tokenIdFirstElementPosition,amountFirstElementPosition,tokenIdLength,amountLength)
+                returnTrue()
+            }
+
+            function uri(){
+                loadUriToMemory()
+                return(0x00, 0x80)
             }
 
             /* ---------- calldata decoding functions ----------- */
@@ -173,7 +197,7 @@ object "Yul_Test" {
                 let id_length_location := add(4, id_length_offset)
                 length := calldataload(id_length_location)
             }
-
+            
             function getFirstElementPosition(offset) -> e {
                 let pos := add(4, mul(offset, 0x20))
                 let id_length_offset := calldataload(pos)
@@ -210,9 +234,6 @@ object "Yul_Test" {
                         updateFmp(0x20)
                     }
                 }
-
-
-
             }
         
 
